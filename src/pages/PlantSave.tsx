@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import React, { useState } from "react";
 import {
   Alert,
   StyleSheet,
@@ -21,43 +21,56 @@ import { getBottomSpace } from "react-native-iphone-x-helper";
 import fonts from "../styles/fonts";
 import { isBefore } from "date-fns";
 import { format } from "date-fns/esm";
+import { loadPlant, PlantProps, savePlant } from "../libs/storage";
+import { useNavigation } from "@react-navigation/native";
 
 interface Params {
-  plant: {
-    id: string;
-    name: string;
-    about: string;
-    water_tips: string;
-    photo: string;
-    environments: [string];
-    frequency: {
-      times: number;
-      repeat_every: string;
-    };
-  };
+  plant: PlantProps;
 }
 
 export function PlantSave() {
   const [selectedDateTime, setSelectedDateTime] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(Platform.OS === "ios")
+  const [showDatePicker, setShowDatePicker] = useState(Platform.OS === "ios");
 
   const route = useRoute();
   const { plant } = route.params as Params;
 
-  function handleChangeTime(event:Event, dateTime: Date | undefined){
-    if(Platform.OS === 'android'){
-      setShowDatePicker(oldState => !oldState);
+  const navigation = useNavigation();
+
+  function handleChangeTime(event: Event, dateTime: Date | undefined) {
+    if (Platform.OS === "android") {
+      setShowDatePicker((oldState) => !oldState);
     }
-    if(dateTime && isBefore(dateTime,new Date())){
+    if (dateTime && isBefore(dateTime, new Date())) {
       setSelectedDateTime(new Date());
-      return Alert.alert("Escolha uma hora no futuro! 🕗 ")
+      return Alert.alert("Escolha uma hora no futuro! 🕗 ");
     }
 
-    if(dateTime) setSelectedDateTime(dateTime);
+    if (dateTime) setSelectedDateTime(dateTime);
   }
 
-  function handleOpenDateTimePickerForAndroid(){
-    setShowDatePicker(oldState => !oldState);
+  function handleOpenDateTimePickerForAndroid() {
+    setShowDatePicker((oldState) => !oldState);
+  }
+
+  async function handleSave() {
+    try {
+      await savePlant({
+        ...plant,
+        dateTimeNotification: selectedDateTime,
+      });
+
+      navigation.navigate("Confirmation", {
+        title: "Tudo certo",
+        subtitle:
+          "Fique tranquilo que sempre vamos lembrar você de cuidar da sua plantinha com muito cuidado.",
+        buttonTitle: "Muito Obirgado",
+        icon: "hug",
+        nextScreen: "MyPlants",
+      });
+    } catch (error) {
+      Alert.alert("Não foi possível salvar. 😢 ");
+    }
   }
 
   return (
@@ -75,14 +88,26 @@ export function PlantSave() {
         <Text style={styles.alertLabel}>
           Escolha o melhor horário para ser lembrado
         </Text>
-        {showDatePicker &&(<DateTimePicker value={selectedDateTime} mode="time" display="spinner" onChange={handleChangeTime} />)}
-        {Platform.OS === 'android' && (
-          <TouchableOpacity style={styles.dateTimePickerButton} onPress={handleOpenDateTimePickerForAndroid}>
-            <Text style={styles.dateTimePickerText}>{`Mudar ${format(selectedDateTime, 'HH:mm')}`}</Text>
-
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDateTime}
+            mode="time"
+            display="spinner"
+            onChange={handleChangeTime}
+          />
+        )}
+        {Platform.OS === "android" && (
+          <TouchableOpacity
+            style={styles.dateTimePickerButton}
+            onPress={handleOpenDateTimePickerForAndroid}
+          >
+            <Text style={styles.dateTimePickerText}>{`Mudar ${format(
+              selectedDateTime,
+              "HH:mm"
+            )}`}</Text>
           </TouchableOpacity>
         )}
-        <Button title="Cadastrar Planta" onPress={() => {}}></Button>
+        <Button title="Cadastrar Planta" onPress={handleSave}></Button>
       </View>
     </View>
   );
@@ -159,13 +184,13 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   dateTimePickerButton: {
-    width: '100%',
+    width: "100%",
     alignItems: "center",
-    paddingVertical: 40
+    paddingVertical: 40,
   },
   dateTimePickerText: {
     color: colors.heading,
     fontSize: 24,
-    fontFamily: fonts.text
+    fontFamily: fonts.text,
   },
 });
